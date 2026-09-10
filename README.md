@@ -57,3 +57,31 @@ pytest             # everything
 ```bash
 uvicorn app.main:app --reload
 ```
+
+## Stress test
+
+Install the stress-test dependency:
+
+```bash
+source .venv/bin/activate
+pip install -r requirements-stress.txt
+```
+
+Start the API without auto-reload:
+
+```bash
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+In another terminal, start Locust:
+
+```bash
+source .venv/bin/activate
+locust -f stress/locustfile.py --host http://127.0.0.1:8000
+```
+
+Open http://localhost:8089 and begin with 50 users spawning at 10 users per
+second. Increase to 200 or more to expose concurrency failures. Watch response
+times and failures in the dashboard. When you stop the run, the Locust terminal
+prints a `CLICK AUDIT` comparing redirect attempts, successful 302 responses,
+and clicks actually stored in SQLite.
