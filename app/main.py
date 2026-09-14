@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import random 
 import string 
@@ -12,12 +12,15 @@ import os
 app = FastAPI()
 DB_PATH = os.environ.get("DB_PATH", "url.db")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+RETRIEVAL_LOG = LOG_DIR / "retrievals.log"
 con = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = con.cursor()
 
 STRING_LENGTH = 6
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class LinkCreate(BaseModel):
@@ -34,6 +37,22 @@ class LinkOut(BaseModel):
 
 class LinkUpdate(BaseModel):
    url: str;
+
+
+def _is_expired(expires_at: str) -> bool:
+   expires = datetime.fromisoformat(expires_at)
+   if expires.tzinfo is None:
+      return expires < datetime.now()
+   return expires < datetime.now(timezone.utc)
+
+
+def log_retrieval(code: str, dest: str, client_ip: str | None = None) -> None:
+   LOG_DIR.mkdir(parents=True, exist_ok=True)
+   ts = datetime.now(timezone.utc).isoformat()
+   ip = client_ip or "-"
+   line = f"{ts}\tcode={code}\tdest={dest}\tip={ip}\n"
+   with RETRIEVAL_LOG.open("a", encoding="utf-8") as f:
+      f.write(line)
 
 
 @app.get("/")
@@ -57,15 +76,17 @@ def create_link(link: LinkCreate) -> LinkOut:
    return LinkOut(url=link.url, code=code, clicks=0)
 
 @app.get("/{code}")
-def redirect(code: str):
+def redirect(code: str, request: Request):
     row = cursor.execute("SELECT url, expires_at FROM links WHERE code = ?", (code, )).fetchone()
     if row is None:
        raise HTTPException(status_code=404, detail="Not found")
     dest, expires_at = row
-    if expires_at is not None and datetime.fromisoformat(expires_at) < datetime.now():
+    if expires_at is not None and _is_expired(expires_at):
        raise HTTPException(status_code=410, detail="link expired")
     cursor.execute("UPDATE links set clicks = clicks + 1 where code =?", (code,)) 
     con.commit()
+    client_ip = request.client.host if request.client else None
+    log_retrieval(code, dest, client_ip)
     return RedirectResponse(row[0], status_code=302)
 
 @app.get("/links/{code}")
