@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pybitly</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #5c6b7a;
+      --line: #d5dde6;
+      --surface: #ffffff;
+      --page: #e8eef4;
+      --accent: #0f6e56;
+      --accent-hover: #0b5744;
+      --danger: #b42318;
+      --danger-hover: #912018;
+      --ok-bg: #e8f5f0;
+      --err-bg: #fef3f2;
+      --shadow: 0 18px 40px rgba(26, 35, 50, 0.08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, #c5d8e8 0%, transparent 55%),
+        radial-gradient(ellipse 70% 45% at 100% 0%, #d4e5dc 0%, transparent 50%),
+        var(--page);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 1.25rem 4rem;
+    }
+
+    .shell {
+      width: min(520px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    header h1 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(2rem, 5vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.35rem 1.4rem 1.5rem;
+      animation: rise 0.45s ease both;
+    }
+
+    .panel:nth-of-type(2) { animation-delay: 0.08s; }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel h2 {
+      margin: 0 0 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 0.35rem;
+    }
+
+    .field { margin-bottom: 0.9rem; }
+
+    .field:last-of-type { margin-bottom: 1.1rem; }
+
+    input, select, button {
+      font: inherit;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.7rem 0.85rem;
+      background: #fbfcfd;
+      color: var(--ink);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 110, 86, 0.18);
+      background: #fff;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 520px) {
+      .row { grid-template-columns: 1fr; }
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    button:active { transform: scale(0.98); }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .btn-secondary {
+      background: #eef2f6;
+      color: var(--ink);
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: #e2e8ef; }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-danger:hover:not(:disabled) { background: var(--danger-hover); }
+
+    .actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .actions button { flex: 1; min-width: 120px; }
+
+    .msg {
+      margin-top: 0.9rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      display: none;
+    }
+
+    .msg.show { display: block; animation: rise 0.25s ease; }
+
+    .msg.ok {
+      background: var(--ok-bg);
+      color: var(--accent-hover);
+    }
+
+    .msg.err {
+      background: var(--err-bg);
+      color: var(--danger);
+    }
+
+    .result {
+      margin-top: 0.9rem;
+      padding: 0.85rem;
+      border-radius: 10px;
+      background: #f4f7fa;
+      border: 1px solid var(--line);
+      display: none;
+    }
+
+    .result.show { display: block; animation: rise 0.25s ease; }
+
+    .result .short {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.95rem;
+      word-break: break-all;
+      margin: 0 0 0.65rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      gap: 0.45rem;
+      font-size: 0.95rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .stats-grid dt {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stats-grid dd {
+      margin: 0 0 0.55rem;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1>pybitly</h1>
+      <p>Shorten a link, or look one up to delete it.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="create-title">
+      <h2 id="create-title">Create</h2>
+      <form id="create-form" novalidate>
+        <div class="field">
+          <label for="url">URL</label>
+          <input id="url" name="url" type="url" placeholder="https://example.com" required autocomplete="url" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="custom_code">Custom code</label>
+            <input id="custom_code" name="custom_code" type="text" placeholder="optional" maxlength="16" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="expires">Expires</label>
+            <select id="expires" name="expires">
+              <option value="">Never</option>
+              <option value="1h">1 hour</option>
+              <option value="1d">1 day</option>
+              <option value="7d">7 days</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" type="submit" id="create-btn">Shorten</button>
+      </form>
+      <div id="create-msg" class="msg" role="status"></div>
+      <div id="create-result" class="result">
+        <p class="short" id="short-url"></p>
+        <div class="actions">
+          <button type="button" class="btn-secondary" id="copy-btn">Copy</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="manage-title">
+      <h2 id="manage-title">Manage</h2>
+      <form id="manage-form" novalidate>
+        <div class="field">
+          <label for="lookup">Short URL or code</label>
+          <input id="lookup" name="lookup" type="text" placeholder="demo or http://127.0.0.1:8000/demo" required autocomplete="off" />
+        </div>
+        <button class="btn-primary" type="submit" id="lookup-btn">Look up</button>
+      </form>
+      <div id="manage-msg" class="msg" role="status"></div>
+      <div id="manage-result" class="result">
+        <dl class="stats-grid">
+          <dt>Code</dt>
+          <dd id="stat-code"></dd>
+          <dt>Destination</dt>
+          <dd id="stat-url"></dd>
+          <dt>Clicks</dt>
+          <dd id="stat-clicks"></dd>
+        </dl>
+        <div class="actions">
+          <button type="button" class="btn-danger" id="delete-btn">Delete</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const createForm = document.getElementById("create-form");
+    const createBtn = document.getElementById("create-btn");
+    const createMsg = document.getElementById("create-msg");
+    const createResult = document.getElementById("create-result");
+    const shortUrlEl = document.getElementById("short-url");
+    const copyBtn = document.getElementById("copy-btn");
+
+    const manageForm = document.getElementById("manage-form");
+    const lookupBtn = document.getElementById("lookup-btn");
+    const manageMsg = document.getElementById("manage-msg");
+    const manageResult = document.getElementById("manage-result");
+    const deleteBtn = document.getElementById("delete-btn");
+
+    let currentCode = null;
+
+    function showMsg(el, text, kind) {
+      el.textContent = text;
+      el.className = `msg show ${kind}`;
+    }
+
+    function clearMsg(el) {
+      el.textContent = "";
+      el.className = "msg";
+    }
+
+    function expiresAtFromChoice(value) {
+      if (!value) return null;
+      const now = new Date();
+      if (value === "1h") now.setHours(now.getHours() + 1);
+      else if (value === "1d") now.setDate(now.getDate() + 1);
+      else if (value === "7d") now.setDate(now.getDate() + 7);
+      else return null;
+      return now.toISOString();
+    }
+
+    function extractCode(input) {
+      const raw = input.trim();
+      if (!raw) return "";
+      try {
+        if (raw.includes("://") || raw.startsWith("/")) {
+          const url = new URL(raw, window.location.origin);
+          const parts = url.pathname.split("/").filter(Boolean);
+          return parts[parts.length - 1] || "";
+        }
+      } catch (_) {
+        /* treat as bare code */
+      }
+      return raw.replace(/^\/+/, "");
+    }
+
+    function shortUrlFor(code) {
+      return `${window.location.origin}/${code}`;
+    }
+
+    createForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearMsg(createMsg);
+      createResult.classList.remove("show");
+
+      const url = document.getElementById("url").value.trim();
+      const custom = document.getElementById("custom_code").value.trim();
+      const expires = document.getElementById("expires").value;
+
+      if (!url) {
+        showMsg(createMsg, "Enter a URL.", "err");
+        return;
+      }
+
+      const payload = { url };
+      if (custom) payload.custom_code = custom;
+      const expiresAt = expiresAtFromChoice(expires);
+      if (expiresAt) payload.expires_at = expiresAt;
+
+      createBtn.disabled = true;
+      try {
+        const res = await fetch("/links", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const detail = body.detail;
+          const text = typeof detail === "string"
+            ? detail
+            : Array.isArray(detail)
+              ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
+              : `Request failed (${res.status})`;
+          showMsg(createMsg, text, "err");
+          return;
+        }
+        const short = shortUrlFor(body.code);
+        shortUrlEl.textContent = short;
+        createResult.classList.add("show");
+        showMsg(createMsg, "Link created.", "ok");
+        createForm.reset();
+      } catch (err) {
+        showMsg(createMsg, "Could not reach the server.", "err");
+      } finally {
+        createBtn.disabled = false;
+      }
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const text = shortUrlEl.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        showMsg(createMsg, "Copied to clipboard.", "ok");
+      } catch (_) {
+        showMsg(createMsg, "Could not copy — select the URL manually.", "err");
+      }
+    });
+
+    manageForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearMsg(manageMsg);
+      manageResult.classList.remove("show");
+      currentCode = null;
+
+      const code = extractCode(document.getElementById("lookup").value);
+      if (!code) {
+        showMsg(manageMsg, "Enter a short URL or code.", "err");
+        return;
+      }
+
+      lookupBtn.disabled = true;
+      try {
+        const res = await fetch(`/links/${encodeURIComponent(code)}`);
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showMsg(manageMsg, body.detail || `Not found (${res.status})`, "err");
+          return;
+        }
+        currentCode = body.code;
+        document.getElementById("stat-code").textContent = body.code;
+        document.getElementById("stat-url").textContent = body.url;
+        document.getElementById("stat-clicks").textContent = String(body.clicks);
+        manageResult.classList.add("show");
+        clearMsg(manageMsg);
+      } catch (_) {
+        showMsg(manageMsg, "Could not reach the server.", "err");
+      } finally {
+        lookupBtn.disabled = false;
+      }
+    });
+
+    deleteBtn.addEventListener("click", async () => {
+      if (!currentCode) return;
+      const ok = window.confirm(`Delete short link “${currentCode}”? This cannot be undone.`);
+      if (!ok) return;
+
+      deleteBtn.disabled = true;
+      try {
+        const res = await fetch(`/links/${encodeURIComponent(currentCode)}`, { method: "DELETE" });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          showMsg(manageMsg, body.detail || `Delete failed (${res.status})`, "err");
+          return;
+        }
+        manageResult.classList.remove("show");
+        manageForm.reset();
+        currentCode = null;
+        showMsg(manageMsg, "Link deleted.", "ok");
+      } catch (_) {
+        showMsg(manageMsg, "Could not reach the server.", "err");
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

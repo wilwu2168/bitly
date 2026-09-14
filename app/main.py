@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import datetime
+from pathlib import Path
 import random 
 import string 
 import sqlite3
@@ -9,10 +11,14 @@ import os
 
 app = FastAPI()
 DB_PATH = os.environ.get("DB_PATH", "url.db")
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 con = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = con.cursor()
 
 STRING_LENGTH = 6
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 class LinkCreate(BaseModel):
 ### Create a link  
@@ -28,6 +34,12 @@ class LinkOut(BaseModel):
 
 class LinkUpdate(BaseModel):
    url: str;
+
+
+@app.get("/")
+def home():
+   return FileResponse(STATIC_DIR / "index.html")
+
 
 @app.post("/links", status_code=201, response_model=LinkOut)
 def create_link(link: LinkCreate) -> LinkOut:
