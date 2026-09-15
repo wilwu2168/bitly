@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from pathlib import Path
+import requests
 import random 
 import string 
 import sqlite3
@@ -22,7 +23,6 @@ STRING_LENGTH = 6
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-
 class LinkCreate(BaseModel):
 ### Create a link  
    url: str
@@ -38,13 +38,11 @@ class LinkOut(BaseModel):
 class LinkUpdate(BaseModel):
    url: str;
 
-
 def _is_expired(expires_at: str) -> bool:
    expires = datetime.fromisoformat(expires_at)
    if expires.tzinfo is None:
       return expires < datetime.now()
    return expires < datetime.now(timezone.utc)
-
 
 def log_retrieval(code: str, dest: str, client_ip: str | None = None) -> None:
    LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,15 +52,15 @@ def log_retrieval(code: str, dest: str, client_ip: str | None = None) -> None:
    with RETRIEVAL_LOG.open("a", encoding="utf-8") as f:
       f.write(line)
 
-
 @app.get("/")
 def home():
    return FileResponse(STATIC_DIR / "index.html")
 
-
 @app.post("/links", status_code=201, response_model=LinkOut)
 def create_link(link: LinkCreate) -> LinkOut:
    letters = string.ascii_letters + string.digits
+   if not is_url_live(link.url):
+      raise HTTPException(status_code=404, detail="not valid url")
    if link.custom_code:
       code = link.custom_code
    else:
@@ -71,7 +69,6 @@ def create_link(link: LinkCreate) -> LinkOut:
       cursor.execute("INSERT INTO links (code, url, clicks, expires_at) values (?, ?, 0, ?)", (code, link.url, link.expires_at.isoformat() if link.expires_at else None),)
    except sqlite3.IntegrityError:
       raise HTTPException(status_code=409, detail="code already taken")
-
    con.commit()
    return LinkOut(url=link.url, code=code, clicks=0)
 
@@ -115,7 +112,14 @@ def delete(code: str):
    cursor.execute("DELETE FROM links where code = ?", (code, ))
    con.commit()
    
+### HELPER FUNCTION
 
+def is_url_live(url : str):
+   try: 
+      response = requests.head(url, allow_redirects=True, timeout=5)
+      return response.status_code < 400
+   except requests.RequestException:
+      return False
 
 ### BUILD THE DB
 
